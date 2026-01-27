@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Dashboard Operação Barricada Zero</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%);
+            --secondary-gradient: linear-gradient(135deg, #4776E6 0%, #8E54E9 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --warning-gradient: linear-gradient(135deg, #f46b45 0%, #eea849 100%);
+            --danger-gradient: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            --info-gradient: linear-gradient(135deg, #4A00E0 0%, #8E2DE2 100%);
+            --bg-body: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: var(--bg-body);
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            padding: 15px;
+            min-height: 100vh;
+        }
+        
+        .main-header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 1.5rem 1rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(26, 41, 128, 0.2);
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .main-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            opacity: 0.3;
+            z-index: 0;
+        }
+        
+        .main-header h1 {
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .main-header p {
+            position: relative;
+            z-index: 1;
+            font-size: 0.95rem;
+        }
+        
+        .upload-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            margin-bottom: 1.5rem;
+            border: 2px dashed #e0e0e0;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section:hover {
+            border-color: #4776E6;
+            transform: translateY(-2px);
+        }
+        
+        .upload-section h4 {
+            font-size: 1.1rem;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+            background-color: white;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+            height: 100%;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .upload-section, .btn, button, .filters-section {
+                display: none !important;
+            }
+            .card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+            .main-header {
+                background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%);
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        .card-header {
+            color: white;
+            font-weight: 700;
+            padding: 1rem 1.2rem;
+            border-radius: 15px 15px 0 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 1rem;
+        }
+        
+        .card-header i {
+            font-size: 1.3rem;
+            opacity: 0.9;
+        }
+        
+        .card-volumes .card-header { background: var(--danger-gradient); }
+        .card-localidades .card-header { background: var(--info-gradient); }
+        .card-municipios .card-header { background: var(--secondary-gradient); }
+        .card-populacao .card-header { background: var(--success-gradient); }
+        .card-insights .card-header { background: var(--warning-gradient); }
+        
+        .card-body {
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 60px);
+        }
+        
+        .stat-box {
+            padding: 0.9rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(248,249,250,0.8) 0%, rgba(233,236,239,0.8) 100%);
+            margin-bottom: 0.8rem;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-box:hover {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .stat-box:nth-child(1) { border-left-color: #ff416c; }
+        .stat-box:nth-child(2) { border-left-color: #4776E6; }
+        .stat-box:nth-child(3) { border-left-color: #11998e; }
+        .stat-box:nth-child(4) { border-left-color: #8E54E9; }
+        .stat-box:nth-child(5) { border-left-color: #f46b45; }
+        
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 0.2rem;
+            background: linear-gradient(90deg, #1a2980, #26d0ce);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            word-break: break-word;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #666;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            margin-bottom: 0.3rem;
+        }
+        
+        .insight {
+            padding: 0.9rem;
+            border-radius: 12px;
+            margin-bottom: 0.8rem;
+            border-left: 4px solid;
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.03);
+        }
+        
+        .insight-title {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+        
+        .insight-content {
+            color: #555;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .insight:nth-child(1) { border-left-color: #ff416c; }
+        .insight:nth-child(2) { border-left-color: #4776E6; }
+        .insight:nth-child(3) { border-left-color: #11998e; }
+        
+        .munic-item {
+            padding: 0.65rem 0.9rem;
+            border-left: 3px solid #8E54E9;
+            margin-bottom: 0.4rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .munic-item:hover {
+            background: #e9ecef;
+            transform: translateX(3px);
+        }
+        
+        .munic-list {
+            overflow-y: auto;
+            padding-right: 5px;
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        
+        .card-municipios .card-body {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
+        .munic-list::-webkit-scrollbar {
+            width: 5px;
+        }
+        
+        .munic-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .munic-list::-webkit-scrollbar-thumb {
+            background: #8E54E9;
+            border-radius: 10px;
+        }
+        
+        .vias-km {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #8E54E9;
+            background: rgba(142, 84, 233, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        
+        .incursoes-count {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: white;
+            background: var(--secondary-gradient);
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+            white-space: nowrap;
+            margin-left: 0.5rem;
+        }
+        
+        .btn-custom {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 0.65rem 1.2rem;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(26, 41, 128, 0.2);
+            font-size: 0.9rem;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(26, 41, 128, 0.3);
+            color: white;
+        }
+        
+        .btn-pdf {
+            background: var(--danger-gradient);
+        }
+        
+        .btn-upload {
+            background: var(--success-gradient);
+        }
+        
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        #dashboard {
+            display: none;
+            animation: fadeIn 0.6s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .progress-ring {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 0.8rem;
+        }
+        
+        .progress-ring-circle {
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        
+        .progress-ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a2980;
+        }
+        
+        .reinc-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #eee;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .reinc-item:last-child {
+            border-bottom: none;
+        }
+        
+        .reinc-loc {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        
+        .reinc-count {
+            background: var(--warning-gradient);
+            color: white;
+            padding: 0.15rem 0.6rem;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        
+        .footer-note {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #666;
+            font-size: 0.85rem;
+            padding-top: 0.8rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .pdf-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            overflow: auto;
+        }
+        
+        .pdf-modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 20px;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 1400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .pdf-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .pdf-modal-body {
+            background: #ffffff;
+            padding: 0;
+            border-radius: 8px;
+            min-height: 400px;
+        }
+        
+        .close-modal {
+            color: #aaa;
+            font-size: 26px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+            line-height: 1;
+        }
+        
+        .close-modal:hover {
+            color: #ff416c;
+        }
+        
+        .filters-section {
+            background: white;
+            padding: 1.2rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        
+        .filters-section h4 {
+            margin-bottom: 0.8rem;
+            color: #1a2980;
+            font-size: 1.1rem;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            flex: 1;
+            min-width: 180px;
+        }
+        
+        .filter-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        
+        .form-control, .form-select {
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        /* ==================== ESTILOS PARA PDF HORIZONTAL ==================== */
+        #pdfContent {
+            background: white;
+            width: 100%;
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        }
+
+        .pdf-page {
+            background: white;
+            padding: 30px 40px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            page-break-after: always;
+            width: 100%;
+        }
+
+        .pdf-header {
+            background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%);
+            color: white;
+            padding: 25px 40px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .pdf-header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .pdf-header p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+
+        .pdf-section-title {
+            background: linear-gradient(135deg, #4776E6 0%, #8E54E9 100%);
+            color: white;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 22px;
+            font-weight: 700;
+            margin: 20px 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pdf-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .pdf-stat-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 5px solid;
+            border-radius: 10px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        .pdf-stat-card:nth-child(5n+1) { border-left-color: #ff416c; }
+        .pdf-stat-card:nth-child(5n+2) { border-left-color: #4776E6; }
+        .pdf-stat-card:nth-child(5n+3) { border-left-color: #11998e; }
+        .pdf-stat-card:nth-child(5n+4) { border-left-color: #8E54E9; }
+        .pdf-stat-card:nth-child(5n) { border-left-color: #f46b45; }
+
+        .pdf-stat-value {
+            font-size: 38px;
+            font-weight: 800;
+            color: #1a2980;
+            margin-bottom: 8px;
+        }
+
+        .pdf-stat-label {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .pdf-chart-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            min-height: 300px;
+        }
+
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .pdf-table th {
+            background: linear-gradient(135deg, #4776E6 0%, #8E54E9 100%);
+            color: white;
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .pdf-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        .pdf-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .pdf-insight-box {
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%);
+            border-left: 5px solid;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 15px;
+        }
+
+        .pdf-insight-box:nth-child(odd) { border-left-color: #ff416c; }
+        .pdf-insight-box:nth-child(even) { border-left-color: #4776E6; }
+
+        .pdf-insight-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .pdf-insight-content {
+            font-size: 15px;
+            color: #555;
+            line-height: 1.7;
+        }
+
+        .pdf-footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+            border-top: 2px solid #e0e0e0;
+            margin-top: 25px;
+        }
+
+        .pdf-municipios-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .pdf-munic-item {
+            background: #f8f9fa;
+            border-left: 4px solid #8E54E9;
+            padding: 14px 16px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 15px;
+        }
+
+        .pdf-munic-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+        }
+
+        .pdf-munic-count {
+            background: var(--secondary-gradient);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .pdf-munic-km {
+            background: rgba(142, 84, 233, 0.2);
+            color: #8E54E9;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .pdf-reincursoes-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .pdf-reinc-item {
+            background: #f8f9fa;
+            border-left: 4px solid #f46b45;
+            padding: 12px 14px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .pdf-reinc-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .pdf-reinc-count {
+            background: var(--warning-gradient);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .pdf-page-section {
+            background: white;
+            padding: 30px 40px;
+            width: 100%;
+            min-height: auto;
+        }
+
+        .pdf-header-mini {
+            background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .pdf-header-mini h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .pdf-insights-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .pdf-page-break {
+            height: 30px;
+            border-bottom: 3px dashed #ccc;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .pdf-page-break::after {
+            content: 'Quebra de Página';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 5px 15px;
+            color: #999;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .pdf-preview-container {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .pdf-preview-container .pdf-page-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+
+        @media print {
+            .pdf-page {
+                box-shadow: none;
+                page-break-after: always;
+            }
+            
+            .pdf-header {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        /* RESPONSIVIDADE MOBILE MELHORADA */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .main-header {
+                padding: 1.2rem 0.8rem;
+                border-radius: 12px;
+                margin-bottom: 1rem;
+            }
+            
+            .main-header h1 {
+                font-size: 1.3rem;
+                margin-bottom: 0.4rem;
+            }
+            
+            .main-header p {
+                font-size: 0.85rem;
+            }
+            
+            .upload-section {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .upload-section h4 {
+                font-size: 1rem;
+                margin-bottom: 0.8rem;
+            }
+            
+            .upload-section p {
+                font-size: 0.85rem;
+                margin-bottom: 1rem;
+            }
+            
+            .d-flex.justify-content-center {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+            
+            #fileUpload {
+                width: 100% !important;
+                margin: 0 0 0.8rem 0 !important;
+            }
+            
+            .control-buttons {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.6rem;
+            }
+            
+            .btn-custom {
+                width: 100%;
+                margin: 0 !important;
+                padding: 0.75rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .card {
+                margin-bottom: 15px;
+                border-radius: 12px;
+            }
+            
+            .card-header {
+                padding: 0.9rem 1rem;
+                font-size: 0.95rem;
+            }
+            
+            .card-header i {
+                font-size: 1.1rem;
+            }
+            
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .stat-number {
+                font-size: 1.6rem;
+            }
+            
+            .stat-label {
+                font-size: 0.75rem;
+            }
+            
+            .stat-box {
+                padding: 0.8rem;
+                margin-bottom: 0.7rem;
+            }
+            
+            .insight {
+                padding: 0.8rem;
+                margin-bottom: 0.7rem;
+            }
+            
+            .insight-title {
+                font-size: 0.9rem;
+            }
+            
+            .insight-content {
+                font-size: 0.85rem;
+            }
+            
+            .munic-item {
+                padding: 0.55rem 0.75rem;
+                font-size: 0.9rem;
+            }
+            
+            .reinc-item {
+                padding: 0.35rem 0;
+            }
+            
+            .reinc-loc {
+                font-size: 0.85rem;
+            }
+            
+            .filter-row {
+                flex-direction: column;
+                gap: 0.6rem;
+            }
+            
+            .filter-group {
+                min-width: 100%;
+            }
+            
+            .pdf-modal-content {
+                width: 98%;
+                padding: 12px;
+                margin: 5% auto;
+            }
+            
+            .pdf-modal-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            
+            .pdf-modal-header h4 {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            body {
+                padding: 8px;
+            }
+            
+            .main-header h1 {
+                font-size: 1.15rem;
+            }
+            
+            .main-header p {
+                font-size: 0.8rem;
+            }
+            
+            .stat-number {
+                font-size: 1.4rem;
+            }
+            
+            .progress-ring {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .progress-ring-text {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="main-header">
+            <h1><i class="fas fa-shield-alt me-2"></i>Operação Barricada Zero</h1>
+            <p><i class="fas fa-chart-bar me-2"></i>Dashboard de Acompanhamento Operacional</p>
+        </div>
+        
+        <div class="upload-section">
+            <div class="text-center">
+                <h4 class="mb-3"><i class="fas fa-file-excel me-2 text-success"></i>Importar Dados do Excel</h4>
+                <p class="text-muted mb-3">Faça upload da planilha Excel contendo a aba "GLOBAL" com os dados da operação</p>
+                <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+                    <input type="file" id="fileUpload" accept=".xlsx,.xls" class="form-control" style="max-width: 300px;">
+                    <button onclick="processFile()" class="btn btn-custom btn-upload">
+                        <i class="fas fa-upload me-2"></i>Processar Arquivo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="filtersSection" class="filters-section">
+            <h4><i class="fas fa-filter me-2"></i>Filtros</h4>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="filterCPA"><i class="fas fa-building me-1"></i>CPA</label>
+                    <select id="filterCPA" class="form-select" onchange="applyFilters()">
+                        <option value="">Todas as CPAs</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterBPM"><i class="fas fa-shield-alt me-1"></i>BPM</label>
+                    <select id="filterBPM" class="form-select" onchange="applyFilters()">
+                        <option value="">Todos os BPMs</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterMunicipio"><i class="fas fa-city me-1"></i>Município</label>
+                    <select id="filterMunicipio" class="form-select" onchange="applyFilters()">
+                        <option value="">Todos os Municípios</option>
+                    </select>
+                </div>
+                <div class="filter-group d-flex align-items-end">
+                    <button onclick="resetFilters()" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-undo me-1"></i>Limpar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="dashboard">
+            <div class="control-buttons mb-4">
+                <button id="btnPdf" onclick="openPDFModal()" class="btn btn-custom btn-pdf" disabled>
+                    <i class="fas fa-eye me-2"></i>Visualizar PDF
+                </button>
+                <button id="btnDownloadPdf" onclick="downloadPDFDirect()" class="btn btn-custom btn-pdf" disabled>
+                    <i class="fas fa-download me-2"></i>Baixar PDF
+                </button>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-3 col-md-6 col-sm-12">
+                    <div class="card card-volumes">
+                        <div class="card-header">
+                            <span><i class="fas fa-truck me-2"></i>Indicadores Principais</span>
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-trash-alt me-1"></i> Total de Remoções</div>
+                                <div class="stat-number" id="totalRem">0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-road me-1"></i> Vias Desobstruídas</div>
+                                <div class="stat-number" id="totalVias">0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-weight-hanging me-1"></i> Peso Total</div>
+                                <div class="stat-number" id="totalPeso">0 ton</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-sync-alt me-1"></i> Visitas Complementares</div>
+                                <div class="stat-number" id="totalRevisitas">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 col-sm-12">
+                    <div class="card card-localidades">
+                        <div class="card-header">
+                            <span><i class="fas fa-map-marker-alt me-2"></i>Localidades</span>
+                            <i class="fas fa-location-arrow"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-thumbtack me-1"></i> Localidades Únicas</div>
+                                <div class="stat-number" id="uniqueLocs">0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-calendar-check me-1"></i> Total de Incursões</div>
+                                <div class="stat-number" id="totalVisits">0</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-redo me-1"></i> Re-incursões</div>
+                                <div class="stat-number" id="reinc">0</div>
+                                <small class="text-muted" id="reincPercent">0%</small>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-ruler-horizontal me-1"></i> Km de Vias Desobstruídas</div>
+                                <div class="stat-number" id="totalKmVias">0 km</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 col-sm-12">
+                    <div class="card card-municipios">
+                        <div class="card-header">
+                            <span><i class="fas fa-city me-2"></i>Municípios Atendidos</span>
+                            <span class="badge bg-light text-dark" id="munics">0</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="munic-list" id="municList">
+                                <p class="text-muted text-center">Aguardando dados...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6 col-sm-12">
+                    <div class="card card-populacao">
+                        <div class="card-header">
+                            <span><i class="fas fa-users me-2"></i>População</span>
+                            <i class="fas fa-user-friends"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-handshake me-1"></i> População Beneficiada</div>
+                                <div class="stat-number" id="popEst">0</div>
+                                <small class="text-muted" id="popSource">Estimativa (10.000 por localidade)</small>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label"><i class="fas fa-shield-alt me-1"></i> Unidades Envolvidas</div>
+                                <div class="stat-number" id="cpasBpms">0 / 0</div>
+                                <small class="text-muted">CPAs / BPMs</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="card card-insights">
+                        <div class="card-header">
+                            <span><i class="fas fa-lightbulb me-2"></i>Análises e Insights Estratégicos</span>
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 col-sm-12" id="insightsLeft"></div>
+                                <div class="col-md-6 col-sm-12" id="insightsRight"></div>
+                            </div>
+                            
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <h6 class="mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Áreas com Maior Volume de Visitas Complementares</h6>
+                                    <div id="topReincidences"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-note">
+                <p><i class="fas fa-sync-alt me-1"></i> Dashboard atualizado em tempo real | Operação Barricada Zero © 2026</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="pdfModal" class="pdf-modal">
+        <div class="pdf-modal-content">
+            <div class="pdf-modal-header">
+                <h4 class="mb-0"><i class="fas fa-file-pdf me-2 text-danger"></i>Pré-visualização do Relatório PDF (Formato Horizontal)</h4>
+                <span class="close-modal" onclick="closePDFModal()">&times;</span>
+            </div>
+            <div class="pdf-modal-body" id="pdfPreview"></div>
+            <div class="text-center mt-3">
+                <button onclick="downloadPDF()" class="btn btn-custom btn-pdf"><i class="fas fa-download me-2"></i>Baixar PDF</button>
+                <button onclick="closePDFModal()" class="btn btn-outline-secondary ms-2">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pdfContent" style="display: none;"></div>
+
+    <script>
+        let dashboardData = {};
+        let animationTimers = {};
+        let allValidRows = [];
+        let allLocList = [];
+        let allMunicipios = [];
+        let allCpas = [];
+        let allBpms = [];
+        let currentLocList = [];
+        let currentCpaFilter = '';
+        let currentBpmFilter = '';
+        let currentMunicipioFilter = '';
+        let workbookGlobal = null;
+        let totalKmViasGlobal = 0;
+        
+        const popsDB = {
+            'CIDADE DE DEUS': 36515,
+            'COMPLEXO DO LINS': 150000,
+            'VILA KENNEDY': 40481,
+            'COMPLEXO DA MARÉ': 124832,
+            'COMPLEXO DO ALEMAO': 54202,
+            JACAREZINHO: 29766,
+            MANGUINHOS: 36610,
+            ROCINHA: 72021,
+            'COMPLEXO DA PENHA': 78678,
+            'RIO DAS PEDRAS': 55653,
+            MUZEMA: 12982,
+        };
+        
+        const ibgePop = {
+            'Rio de Janeiro': 6729894,
+            'São Gonçalo': 960196,
+            'Duque de Caxias': 866225,
+            'Nova Iguaçu': 854439,
+            'Niterói': 523664,
+            'Belford Roxo': 495231,
+            'Campos dos Goytacazes': 500348,
+            'São João de Meriti': 449968,
+            'Petrópolis': 291660,
+            'Volta Redonda': 270839,
+            'Magé': 241513,
+            'Itaboraí': 235123,
+            'Mesquita': 175065,
+            'Nilópolis': 151911,
+            'Maricá': 213378,
+            'Araruama': 134293,
+            'Cabo Frio': 238867,
+            'Angra dos Reis': 179516,
+            'Resende': 133201,
+            'Teresópolis': 174587,
+            'Queimados': 145386,
+            'Itaguaí': 110458,
+            'Japeri': 100723,
+            'Seropédica': 85274,
+            'São Pedro da Aldeia': 104029,
+            'Rio das Ostras': 170539,
+            'Macaé': 261984,
+            'Guapimirim': 55201,
+            'Paracambi': 43790,
+            'Cachoeiras de Macacu': 59552
+        };
+        
+        function excelToDate(serial) {
+            if (!serial || isNaN(serial)) return null;
+            const epoch = new Date(1899, 11, 30);
+            const days = Math.floor(serial);
+            const result = new Date(epoch.getTime() + days * 24 * 60 * 60 * 1000);
+            const dd = String(result.getDate()).padStart(2, '0');
+            const mm = String(result.getMonth() + 1).padStart(2, '0');
+            const yyyy = result.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+        
+        function splitLocalidades(locStr) {
+            if (!locStr) return [];
+            const locs = locStr.toString().split(/[,\/&;]+| e /i);
+            return locs
+                .map(l => l.trim().toUpperCase())
+                .filter(l => l.length > 1);
+        }
+        
+        function processFile() {
+            const file = document.getElementById('fileUpload').files[0];
+            if (!file) {
+                alert('Por favor, selecione um arquivo Excel (.xlsx ou .xls)');
+                return;
+            }
+            
+            Object.values(animationTimers).forEach(timer => clearInterval(timer));
+            animationTimers = {};
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { 
+                        type: 'binary',
+                        bookSheets: false,
+                        cellStyles: true
+                    });
+                    
+                    workbookGlobal = workbook;
+                    console.log('Abas detectadas:', workbook.SheetNames);
+                    
+                    if (!workbook.Sheets['GLOBAL']) {
+                        alert('O arquivo Excel deve conter uma aba chamada "GLOBAL" (mesmo que esteja oculta)');
+                        return;
+                    }
+                    
+                    const globalSheet = workbook.Sheets['GLOBAL'];
+                    const globalData = XLSX.utils.sheet_to_json(globalSheet, { header: 1, defval: '' });
+                    
+                    if (globalData.length <= 1) {
+                        alert('O arquivo não contém dados válidos na aba GLOBAL');
+                        return;
+                    }
+                    
+                    const headers = globalData[0];
+                    console.log('Cabeçalhos encontrados:', headers);
+                    
+                    const getCol = name => headers.indexOf(name);
+                    
+                    const findColFlexible = (patterns) => {
+                        for (let i = 0; i < headers.length; i++) {
+                            const h = headers[i];
+                            if (!h) continue;
+                            const hNorm = h.toString().trim().toUpperCase();
+                            for (const p of patterns) {
+                                if (hNorm === p.toUpperCase() || hNorm.replace(/[\.\s]/g, '') === p.toUpperCase().replace(/[\.\s]/g, '')) {
+                                    return i;
+                                }
+                            }
+                        }
+                        return -1;
+                    };
+                    
+                    const locCol = getCol('LOCALIDADE');
+                    const dataCol = getCol('DATA');
+                    const remCol = getCol('REMOÇÕES');
+                    const viasCol = getCol('VIAS');
+                    const pesoCol = getCol('PESO/TON');
+                    const municCol = getCol('MUNICÍPIO');
+                    const cpaCol = getCol('CPA');
+                    const bpmCol = getCol('BPM');
+                    const popCol = findColFlexible(['POP. EST', 'POP EST', 'POP.EST', 'POPEST', 'POP. EST.', 'POPULAÇÃO ESTIMADA', 'POPULAÇÃO EST']);
+                    
+                    if (locCol === -1) {
+                        alert('Coluna "LOCALIDADE" não encontrada no arquivo');
+                        return;
+                    }
+                    
+                    const dataRows = globalData.slice(1);
+                    allValidRows = dataRows.filter(row => {
+                        if (!row || row.length === 0) return false;
+                        const locValue = row[locCol];
+                        if (!locValue || locValue.toString().trim() === '') return false;
+                        const rem = parseFloat(row[remCol]) || 0;
+                        const vias = parseFloat(row[viasCol]) || 0;
+                        const peso = parseFloat(row[pesoCol]) || 0;
+                        return rem > 0 || vias > 0 || peso > 0;
+                    });
+                    
+                    console.log('Linhas válidas encontradas:', allValidRows.length);
+                    
+                    if (allValidRows.length === 0) {
+                        alert('Nenhum dado válido encontrado na aba GLOBAL');
+                        return;
+                    }
+                    
+                    processCompleteData(allValidRows, locCol, dataCol, remCol, viasCol, pesoCol, municCol, cpaCol, bpmCol, popCol, workbook);
+                    
+                    document.getElementById('dashboard').style.display = 'block';
+                    document.getElementById('filtersSection').style.display = 'block';
+                    document.getElementById('btnPdf').disabled = false;
+                    document.getElementById('btnDownloadPdf').disabled = false;
+                    
+                    applyFilters();
+                    
+                } catch (error) {
+                    console.error('Erro ao processar arquivo:', error);
+                    alert('Erro ao processar o arquivo. Verifique se o formato está correto.\n\nDetalhes: ' + error.message);
+                }
+            };
+            
+            reader.onerror = () => {
+                alert('Erro ao ler o arquivo. Tente novamente.');
+            };
+            
+            reader.readAsBinaryString(file);
+        }
+        
+        function processCompleteData(validRows, locCol, dataCol, remCol, viasCol, pesoCol, municCol, cpaCol, bpmCol, popCol, workbook) {
+            const locMap = {};
+            allMunicipios = new Set();
+            allCpas = new Set();
+            allBpms = new Set();
+            
+            totalKmViasGlobal = 0;
+            
+            const allSheetNames = workbook.SheetNames;
+            let viasSheetName = allSheetNames.find(name => name.toUpperCase().trim() === 'VIAS');
+            if (!viasSheetName) {
+                viasSheetName = allSheetNames.find(name => name.toUpperCase().includes('VIA'));
+            }
+            
+            if (viasSheetName && workbook.Sheets[viasSheetName]) {
+                const viasSheet = workbook.Sheets[viasSheetName];
+                const viasRows = XLSX.utils.sheet_to_json(viasSheet, { header: 1 });
+                const viasHeaders = viasRows[0] || [];
+                
+                // Encontrar TODAS as colunas "M" que contêm metragem
+                const mColumnIndices = [];
+                viasHeaders.forEach((h, i) => {
+                    if (h) {
+                        const hStr = h.toString().toUpperCase().trim();
+                        if (hStr === 'M' || hStr === 'M.') {
+                            mColumnIndices.push(i);
+                        }
+                    }
+                });
+                
+                console.log('Aba VIAS encontrada:', viasSheetName);
+                console.log('Colunas M encontradas:', mColumnIndices);
+                
+                if (viasRows.length > 1 && mColumnIndices.length > 0) {
+                    let totalMetros = 0;
+                    
+                    for (let i = 1; i < viasRows.length; i++) {
+                        const row = viasRows[i];
+                        if (!row || row.length === 0) continue;
+                        
+                        // Somar valores de TODAS as colunas M
+                        mColumnIndices.forEach(colIdx => {
+                            const cellValue = row[colIdx];
+                            if (cellValue !== undefined && cellValue !== null) {
+                                if (typeof cellValue === 'number' && cellValue > 0) {
+                                    totalMetros += cellValue;
+                                } else if (typeof cellValue === 'string') {
+                                    let valueStr = cellValue.toString().trim();
+                                    valueStr = valueStr.replace(/[KM\s]/gi, '');
+                                    valueStr = valueStr.replace(/\./g, '').replace(',', '.');
+                                    const numValue = parseFloat(valueStr);
+                                    if (!isNaN(numValue) && numValue > 0) {
+                                        totalMetros += numValue;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Converter metros para km
+                    totalKmViasGlobal = totalMetros / 1000;
+                    console.log('Total metros VIAS:', totalMetros.toFixed(0));
+                    console.log('Total km VIAS:', totalKmViasGlobal.toFixed(2));
+                }
+            }
+            
+            validRows.forEach(row => {
+                const locStr = row[locCol];
+                const locs = splitLocalidades(locStr);
+                
+                if (locs.length === 0) return;
+                
+                const rem = parseFloat(row[remCol]) || 0;
+                const vias = parseFloat(row[viasCol]) || 0;
+                const peso = parseFloat(row[pesoCol]) || 0;
+                
+                const dateVal = row[dataCol];
+                let dateStr = null;
+                if (dateVal) {
+                    if (typeof dateVal === 'number') {
+                        dateStr = excelToDate(dateVal);
+                    } else if (typeof dateVal === 'string') {
+                        dateStr = dateVal.trim();
+                    }
+                }
+                
+                const cpa = cpaCol !== -1 && row[cpaCol] ? row[cpaCol].toString().trim() : null;
+                const bpm = bpmCol !== -1 && row[bpmCol] ? row[bpmCol].toString().trim() : null;
+                const munic = municCol !== -1 && row[municCol] ? row[municCol].toString().trim() : null;
+                
+                if (cpa) allCpas.add(cpa);
+                if (bpm) allBpms.add(bpm);
+                if (munic) allMunicipios.add(munic);
+                
+                const remPerLoc = rem / locs.length;
+                const viasPerLoc = vias / locs.length;
+                const pesoPerLoc = peso / locs.length;
+                
+                locs.forEach(loc => {
+                    if (!locMap[loc]) {
+                        locMap[loc] = {
+                            name: loc,
+                            datas: new Set(),
+                            remocoes: 0,
+                            vias: 0,
+                            peso: 0,
+                            cpas: new Set(),
+                            bpms: new Set(),
+                            municipios: new Set()
+                        };
+                    }
+                    
+                    if (dateStr) {
+                        locMap[loc].datas.add(dateStr);
+                    }
+                    
+                    locMap[loc].remocoes += remPerLoc;
+                    locMap[loc].vias += viasPerLoc;
+                    locMap[loc].peso += pesoPerLoc;
+                    
+                    if (cpa) locMap[loc].cpas.add(cpa);
+                    if (bpm) locMap[loc].bpms.add(bpm);
+                    if (munic) locMap[loc].municipios.add(munic);
+                });
+            });
+            
+            allLocList = [];
+            for (const loc in locMap) {
+                const locData = locMap[loc];
+                const datasArray = Array.from(locData.datas);
+                datasArray.sort((a, b) => {
+                    const [da, ma, ya] = a.split('/');
+                    const [db, mb, yb] = b.split('/');
+                    return parseInt(ya + ma + da) - parseInt(yb + mb + db);
+                });
+                
+                allLocList.push({
+                    name: locData.name,
+                    datas: datasArray,
+                    remocoes: locData.remocoes,
+                    vias: locData.vias,
+                    peso: locData.peso,
+                    cpas: Array.from(locData.cpas),
+                    bpms: Array.from(locData.bpms),
+                    municipios: Array.from(locData.municipios),
+                    visitas: datasArray.length
+                });
+            }
+            
+            populateFilters();
+        }
+        
+        function populateFilters() {
+            const cpaSelect = document.getElementById('filterCPA');
+            const bpmSelect = document.getElementById('filterBPM');
+            const municSelect = document.getElementById('filterMunicipio');
+            
+            cpaSelect.innerHTML = '<option value="">Todas as CPAs</option>';
+            Array.from(allCpas).sort().forEach(cpa => {
+                const option = document.createElement('option');
+                option.value = cpa;
+                option.textContent = cpa;
+                cpaSelect.appendChild(option);
+            });
+            
+            bpmSelect.innerHTML = '<option value="">Todos os BPMs</option>';
+            Array.from(allBpms).sort().forEach(bpm => {
+                const option = document.createElement('option');
+                option.value = bpm;
+                option.textContent = bpm;
+                bpmSelect.appendChild(option);
+            });
+            
+            municSelect.innerHTML = '<option value="">Todos os Municípios</option>';
+            Array.from(allMunicipios).sort().forEach(munic => {
+                const option = document.createElement('option');
+                option.value = munic;
+                option.textContent = munic;
+                municSelect.appendChild(option);
+            });
+        }
+        
+        function applyFilters() {
+            currentCpaFilter = document.getElementById('filterCPA').value;
+            currentBpmFilter = document.getElementById('filterBPM').value;
+            currentMunicipioFilter = document.getElementById('filterMunicipio').value;
+            
+            currentLocList = allLocList.filter(loc => {
+                if (currentCpaFilter && !loc.cpas.includes(currentCpaFilter)) return false;
+                if (currentBpmFilter && !loc.bpms.includes(currentBpmFilter)) return false;
+                if (currentMunicipioFilter && !loc.municipios.includes(currentMunicipioFilter)) return false;
+                return true;
+            });
+            
+            updateDashboard(currentLocList);
+        }
+        
+        function resetFilters() {
+            document.getElementById('filterCPA').value = '';
+            document.getElementById('filterBPM').value = '';
+            document.getElementById('filterMunicipio').value = '';
+            applyFilters();
+        }
+        
+        function updateDashboard(locList) {
+            const totalRemocoes = locList.reduce((sum, loc) => sum + loc.remocoes, 0);
+            const totalVias = locList.reduce((sum, loc) => sum + loc.vias, 0);
+            const totalPeso = locList.reduce((sum, loc) => sum + loc.peso, 0);
+            const totalVisitas = locList.reduce((sum, loc) => sum + loc.visitas, 0);
+            const uniqueLocs = locList.length;
+            const reincidencias = locList.filter(loc => loc.visitas > 1).length;
+            const reincPercent = uniqueLocs > 0 ? Math.round((reincidencias / uniqueLocs) * 100) : 0;
+            
+            const totalRevisitas = locList.reduce((sum, loc) => sum + Math.max(0, loc.visitas - 1), 0);
+            
+            const municSet = new Set();
+            const incursoesPorMunicipio = {};
+            locList.forEach(loc => {
+                loc.municipios.forEach(m => {
+                    municSet.add(m);
+                    if (!incursoesPorMunicipio[m]) {
+                        incursoesPorMunicipio[m] = 0;
+                    }
+                    incursoesPorMunicipio[m] += loc.visitas;
+                });
+            });
+            const totalMunicipios = municSet.size;
+            
+            const cpaSet = new Set();
+            const bpmSet = new Set();
+            locList.forEach(loc => {
+                loc.cpas.forEach(c => cpaSet.add(c));
+                loc.bpms.forEach(b => bpmSet.add(b));
+            });
+            
+            let populacaoBeneficiada = 0;
+            locList.forEach(loc => {
+                let popLoc = popsDB[loc.name] || 10000;
+                populacaoBeneficiada += popLoc;
+            });
+            
+            dashboardData = {
+                totalRemocoes,
+                totalVias,
+                totalPeso,
+                totalVisitas,
+                uniqueLocs,
+                reincidencias,
+                reincPercent,
+                totalMunicipios,
+                populacaoBeneficiada,
+                cpasCount: cpaSet.size,
+                bpmsCount: bpmSet.size,
+                locList,
+                municSet,
+                incursoesPorMunicipio,
+                totalRevisitas
+            };
+            
+            document.getElementById('totalRem').textContent = Math.round(totalRemocoes).toLocaleString('pt-BR');
+            document.getElementById('totalVias').textContent = Math.round(totalVias).toLocaleString('pt-BR');
+            document.getElementById('totalPeso').textContent = totalPeso.toFixed(2) + ' ton';
+            document.getElementById('totalRevisitas').textContent = totalRevisitas.toLocaleString('pt-BR');
+            document.getElementById('uniqueLocs').textContent = uniqueLocs.toLocaleString('pt-BR');
+            document.getElementById('totalVisits').textContent = totalVisitas.toLocaleString('pt-BR');
+            document.getElementById('reinc').textContent = reincidencias.toLocaleString('pt-BR');
+            document.getElementById('reincPercent').textContent = reincPercent + '%';
+            document.getElementById('munics').textContent = totalMunicipios.toLocaleString('pt-BR');
+            document.getElementById('popEst').textContent = populacaoBeneficiada.toLocaleString('pt-BR');
+            document.getElementById('totalKmVias').textContent = totalKmViasGlobal.toFixed(2) + ' km';
+            
+            let displayCpas = cpaSet.size;
+            let displayBpms = bpmSet.size;
+            
+            if (currentCpaFilter) {
+                displayCpas = 1;
+            }
+            if (currentBpmFilter) {
+                displayBpms = 1;
+            }
+            
+            document.getElementById('cpasBpms').textContent = `${displayCpas} / ${displayBpms}`;
+            
+            const municArray = Array.from(municSet).sort();
+            const municListHtml = municArray.map(m => 
+                `<div class="munic-item">
+                    <span>${m}</span>
+                    <span class="incursoes-count">${incursoesPorMunicipio[m] || 0} incursões</span>
+                </div>`
+            ).join('');
+            document.getElementById('municList').innerHTML = municListHtml;
+            
+            generateInsights(locList, totalRemocoes, totalVias, totalPeso, reincPercent, totalRevisitas);
+            generateTopReincidences(locList);
+        }
+        
+        function generateInsights(locList, totalRemocoes, totalVias, totalPeso, reincPercent, totalRevisitas) {
+            const insights = [];
+            
+            if (totalRemocoes > 0) {
+                const avgRemPerLoc = (totalRemocoes / locList.length).toFixed(1);
+                insights.push({
+                    title: 'Eficiência Operacional',
+                    content: `Média de ${avgRemPerLoc} remoções por localidade atendida. A operação demonstra capacidade de intervenção consistente em múltiplas áreas simultaneamente.`,
+                    icon: 'fa-chart-line'
+                });
+            }
+            
+            if (totalVias > 100) {
+                insights.push({
+                    title: 'Impacto na Mobilidade Urbana',
+                    content: `${Math.round(totalVias).toLocaleString('pt-BR')} vias desobstruídas, representando significativa melhoria na circulação e acesso a serviços públicos nas comunidades atendidas.`,
+                    icon: 'fa-road'
+                });
+            }
+            
+            if (reincPercent > 30) {
+                insights.push({
+                    title: 'Monitoramento Contínuo',
+                    content: `${reincPercent}% das localidades receberam visitas complementares, indicando acompanhamento estratégico e ação preventiva em áreas críticas.`,
+                    icon: 'fa-sync-alt'
+                });
+            }
+            
+            if (totalRevisitas > 0) {
+                insights.push({
+                    title: 'Volume de Re-incursões',
+                    content: `Foram realizadas ${totalRevisitas.toLocaleString('pt-BR')} visitas complementares (re-incursões), demonstrando comprometimento com a manutenção das áreas já atendidas.`,
+                    icon: 'fa-redo'
+                });
+            }
+            
+            if (totalPeso > 50) {
+                insights.push({
+                    title: 'Volume de Material Removido',
+                    content: `${totalPeso.toFixed(2)} toneladas de material removido, equivalente a aproximadamente ${Math.ceil(totalPeso / 5)} viagens de caminhão caçamba.`,
+                    icon: 'fa-weight-hanging'
+                });
+            }
+            
+            const insightsLeft = document.getElementById('insightsLeft');
+            const insightsRight = document.getElementById('insightsRight');
+            insightsLeft.innerHTML = '';
+            insightsRight.innerHTML = '';
+            
+            insights.forEach((insight, index) => {
+                const insightHtml = `
+                    <div class="insight">
+                        <div class="insight-title">
+                            <i class="fas ${insight.icon}"></i>
+                            ${insight.title}
+                        </div>
+                        <div class="insight-content">${insight.content}</div>
+                    </div>
+                `;
+                if (index % 2 === 0) {
+                    insightsLeft.innerHTML += insightHtml;
+                } else {
+                    insightsRight.innerHTML += insightHtml;
+                }
+            });
+        }
+        
+        function generateTopReincidences(locList) {
+            const locsWithRevisitas = locList
+                .filter(loc => loc.visitas > 1)
+                .sort((a, b) => b.visitas - a.visitas)
+                .slice(0, 10);
+            
+            const container = document.getElementById('topReincidences');
+            
+            if (locsWithRevisitas.length === 0) {
+                container.innerHTML = '<p class="text-muted">Nenhuma localidade com visitas complementares registradas.</p>';
+                return;
+            }
+            
+            const html = locsWithRevisitas.map(loc => `
+                <div class="reinc-item">
+                    <span class="reinc-loc">${loc.name}</span>
+                    <span class="reinc-count">${loc.visitas} visitas</span>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function generatePDFPages() {
+            const data = dashboardData;
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('pt-BR');
+            const timeStr = now.toLocaleTimeString('pt-BR');
+            
+            const municArray = Array.from(data.municSet || []).sort();
+            const incursoesPorMunicipio = data.incursoesPorMunicipio || {};
+            
+            const locsWithRevisitas = (data.locList || [])
+                .filter(loc => loc.visitas > 1)
+                .sort((a, b) => b.visitas - a.visitas)
+                .slice(0, 16);
+            
+            const pages = [];
+            
+            pages.push(`
+                <div class="pdf-page-section" data-page="1">
+                    <div class="pdf-header">
+                        <h1><i class="fas fa-shield-alt me-3"></i>Operação Barricada Zero</h1>
+                        <p><i class="fas fa-file-alt me-2"></i>Extrato Sintético de Acompanhamento Operacional</p>
+                        <p><i class="fas fa-calendar-alt me-2"></i>Gerado em: ${dateStr} às ${timeStr}</p>
+                    </div>
+                    
+                    <div class="pdf-section-title">
+                        <i class="fas fa-chart-bar"></i>
+                        Indicadores Principais
+                    </div>
+                    
+                    <div class="pdf-stats-grid">
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${Math.round(data.totalRemocoes || 0).toLocaleString('pt-BR')}</div>
+                            <div class="pdf-stat-label">Total de Remoções</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${Math.round(data.totalVias || 0).toLocaleString('pt-BR')}</div>
+                            <div class="pdf-stat-label">Vias Desobstruídas</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${(data.totalPeso || 0).toFixed(2)}</div>
+                            <div class="pdf-stat-label">Peso Total (ton)</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${(data.totalRevisitas || 0).toLocaleString('pt-BR')}</div>
+                            <div class="pdf-stat-label">Visitas Complementares</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${(data.totalVisitas || 0).toLocaleString('pt-BR')}</div>
+                            <div class="pdf-stat-label">Total de Incursões</div>
+                        </div>
+                    </div>
+                    
+                    <div class="pdf-stats-grid">
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${data.uniqueLocs || 0}</div>
+                            <div class="pdf-stat-label">Localidades Únicas</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${data.reincidencias || 0}</div>
+                            <div class="pdf-stat-label">Re-incursões</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${data.reincPercent || 0}%</div>
+                            <div class="pdf-stat-label">Taxa Re-incursões</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${data.totalMunicipios || 0}</div>
+                            <div class="pdf-stat-label">Municípios</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${(data.populacaoBeneficiada || 0).toLocaleString('pt-BR')}</div>
+                            <div class="pdf-stat-label">População Beneficiada</div>
+                        </div>
+                    </div>
+                    
+                    <div class="pdf-stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${totalKmViasGlobal.toFixed(2)}</div>
+                            <div class="pdf-stat-label">Km de Vias Desobstruídas</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${data.cpasCount || 0}</div>
+                            <div class="pdf-stat-label">CPAs Envolvidas</div>
+                        </div>
+                        <div class="pdf-stat-card">
+                            <div class="pdf-stat-value">${data.bpmsCount || 0}</div>
+                            <div class="pdf-stat-label">BPMs Envolvidos</div>
+                        </div>
+                    </div>
+                    
+                    <div class="pdf-section-title">
+                        <i class="fas fa-city"></i>
+                        Municípios Atendidos (com quantidade de incursões)
+                    </div>
+                    
+                    <div class="pdf-municipios-grid">
+                        ${municArray.map(m => `
+                            <div class="pdf-munic-item">
+                                <span class="pdf-munic-name">${m}</span>
+                                <span class="pdf-munic-count">${incursoesPorMunicipio[m] || 0} incursões</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `);
+            
+            if (locsWithRevisitas.length > 0) {
+                pages.push(`
+                    <div class="pdf-page-section" data-page="2">
+                        <div class="pdf-header-mini">
+                            <h2><i class="fas fa-shield-alt me-2"></i>Operação Barricada Zero - Página 2</h2>
+                        </div>
+                        
+                        <div class="pdf-section-title">
+                            <i class="fas fa-redo"></i>
+                            Áreas com Maior Volume de Visitas Complementares (Re-incursões)
+                        </div>
+                        
+                        <div class="pdf-reincursoes-grid">
+                            ${locsWithRevisitas.map(loc => `
+                                <div class="pdf-reinc-item">
+                                    <span class="pdf-reinc-name">${loc.name}</span>
+                                    <span class="pdf-reinc-count">${loc.visitas} visitas</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="pdf-section-title">
+                            <i class="fas fa-lightbulb"></i>
+                            Análises e Insights Estratégicos
+                        </div>
+                        
+                        <div class="pdf-insights-grid">
+                            ${data.totalRemocoes > 0 ? `
+                                <div class="pdf-insight-box">
+                                    <div class="pdf-insight-title"><i class="fas fa-chart-line me-2"></i>Eficiência Operacional</div>
+                                    <div class="pdf-insight-content">Média de ${(data.totalRemocoes / (data.uniqueLocs || 1)).toFixed(1)} remoções por localidade atendida. A operação demonstra capacidade de intervenção consistente.</div>
+                                </div>
+                            ` : ''}
+                            
+                            ${data.totalVias > 100 ? `
+                                <div class="pdf-insight-box">
+                                    <div class="pdf-insight-title"><i class="fas fa-road me-2"></i>Impacto na Mobilidade</div>
+                                    <div class="pdf-insight-content">${Math.round(data.totalVias).toLocaleString('pt-BR')} vias desobstruídas, melhorando circulação e acesso a serviços públicos.</div>
+                                </div>
+                            ` : ''}
+                            
+                            ${data.totalRevisitas > 0 ? `
+                                <div class="pdf-insight-box">
+                                    <div class="pdf-insight-title"><i class="fas fa-redo me-2"></i>Volume de Re-incursões</div>
+                                    <div class="pdf-insight-content">${data.totalRevisitas.toLocaleString('pt-BR')} visitas complementares realizadas para manutenção das áreas já atendidas.</div>
+                                </div>
+                            ` : ''}
+                            
+                            ${data.totalPeso > 50 ? `
+                                <div class="pdf-insight-box">
+                                    <div class="pdf-insight-title"><i class="fas fa-weight-hanging me-2"></i>Material Removido</div>
+                                    <div class="pdf-insight-content">${data.totalPeso.toFixed(2)} toneladas removidas, equivalente a ~${Math.ceil(data.totalPeso / 5)} viagens de caminhão caçamba.</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="pdf-footer">
+                            <p><strong>Operação Barricada Zero</strong> - Relatório gerado automaticamente</p>
+                            <p>© 2026 - Todos os direitos reservados</p>
+                        </div>
+                    </div>
+                `);
+            } else {
+                pages[0] += `
+                    <div class="pdf-section-title" style="margin-top: 20px;">
+                        <i class="fas fa-lightbulb"></i>
+                        Análises e Insights Estratégicos
+                    </div>
+                    
+                    <div class="pdf-insights-grid">
+                        ${data.totalRemocoes > 0 ? `
+                            <div class="pdf-insight-box">
+                                <div class="pdf-insight-title"><i class="fas fa-chart-line me-2"></i>Eficiência Operacional</div>
+                                <div class="pdf-insight-content">Média de ${(data.totalRemocoes / (data.uniqueLocs || 1)).toFixed(1)} remoções por localidade.</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${data.totalVias > 100 ? `
+                            <div class="pdf-insight-box">
+                                <div class="pdf-insight-title"><i class="fas fa-road me-2"></i>Impacto na Mobilidade</div>
+                                <div class="pdf-insight-content">${Math.round(data.totalVias).toLocaleString('pt-BR')} vias desobstruídas.</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${data.totalRevisitas > 0 ? `
+                            <div class="pdf-insight-box">
+                                <div class="pdf-insight-title"><i class="fas fa-redo me-2"></i>Volume de Re-incursões</div>
+                                <div class="pdf-insight-content">${data.totalRevisitas.toLocaleString('pt-BR')} visitas complementares.</div>
+                            </div>
+                        ` : ''}
+                        
+                        ${data.totalPeso > 50 ? `
+                            <div class="pdf-insight-box">
+                                <div class="pdf-insight-title"><i class="fas fa-weight-hanging me-2"></i>Material Removido</div>
+                                <div class="pdf-insight-content">${data.totalPeso.toFixed(2)} toneladas.</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="pdf-footer">
+                        <p><strong>Operação Barricada Zero</strong> - Relatório gerado automaticamente</p>
+                        <p>© 2026 - Todos os direitos reservados</p>
+                    </div>
+                `;
+            }
+            
+            return pages;
+        }
+        
+        function generatePDFContent() {
+            const pages = generatePDFPages();
+            return `<div class="pdf-preview-container">${pages.join('<div class="pdf-page-break"></div>')}</div>`;
+        }
+        
+        function openPDFModal() {
+            const pdfContent = generatePDFContent();
+            document.getElementById('pdfPreview').innerHTML = pdfContent;
+            document.getElementById('pdfModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closePDFModal() {
+            document.getElementById('pdfModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        async function downloadPDF() {
+            const pages = generatePDFPages();
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                
+                for (let i = 0; i < pages.length; i++) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.style.position = 'absolute';
+                    tempDiv.style.left = '-9999px';
+                    tempDiv.style.top = '0';
+                    tempDiv.style.width = '1400px';
+                    tempDiv.style.padding = '30px 40px';
+                    tempDiv.style.background = 'white';
+                    tempDiv.innerHTML = pages[i];
+                    document.body.appendChild(tempDiv);
+                    
+                    const canvas = await html2canvas(tempDiv, {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff',
+                        width: 1400
+                    });
+                    
+                    document.body.removeChild(tempDiv);
+                    
+                    if (i > 0) {
+                        pdf.addPage();
+                    }
+                    
+                    const imgWidth = pageWidth - 20;
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    const imgData = canvas.toDataURL('image/png');
+                    
+                    const maxHeight = pageHeight - 20;
+                    const finalHeight = Math.min(imgHeight, maxHeight);
+                    const finalWidth = (finalHeight === maxHeight) ? (canvas.width * maxHeight) / canvas.height : imgWidth;
+                    
+                    const xOffset = (pageWidth - finalWidth) / 2;
+                    pdf.addImage(imgData, 'PNG', xOffset, 10, finalWidth, finalHeight);
+                }
+                
+                const now = new Date();
+                const fileName = `Barricada_Zero_Extrato_${now.toISOString().slice(0,10)}.pdf`;
+                pdf.save(fileName);
+                
+            } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                alert('Erro ao gerar o PDF. Por favor, tente novamente.');
+            }
+        }
+        
+        async function downloadPDFDirect() {
+            await downloadPDF();
+        }
+        
+        window.onclick = function(event) {
+            const modal = document.getElementById('pdfModal');
+            if (event.target === modal) {
+                closePDFModal();
+            }
+        };
+        
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closePDFModal();
+            }
+        });
+    </script>
+</body>
+</html>
