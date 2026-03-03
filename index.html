@@ -1159,6 +1159,11 @@
     <div id="pdfContent" style="display: none;"></div>
 
     <script>
+        // ============================================================================
+        // TAXA DE CORREÇÃO (1.329) APLICADA A REMOÇÕES, VIAS E PESO
+        // ============================================================================
+        const TAXA_CORRECAO = 1.329;
+
         let dashboardData = {};
         let animationTimers = {};
         let allValidRows = [];
@@ -1554,9 +1559,16 @@
         }
         
         function updateDashboard(locList) {
-            const totalRemocoes = locList.reduce((sum, loc) => sum + loc.remocoes, 0);
-            const totalVias = locList.reduce((sum, loc) => sum + loc.vias, 0);
-            const totalPeso = locList.reduce((sum, loc) => sum + loc.peso, 0);
+            // Calcular totais a partir dos dados originais
+            let totalRemocoes = locList.reduce((sum, loc) => sum + loc.remocoes, 0);
+            let totalVias = locList.reduce((sum, loc) => sum + loc.vias, 0);
+            let totalPeso = locList.reduce((sum, loc) => sum + loc.peso, 0);
+            
+            // Aplicar taxa de correção 1.329
+            totalRemocoes = totalRemocoes * TAXA_CORRECAO;
+            totalVias = totalVias * TAXA_CORRECAO;
+            totalPeso = totalPeso * TAXA_CORRECAO;
+            
             const totalVisitas = locList.reduce((sum, loc) => sum + loc.visitas, 0);
             const uniqueLocs = locList.length;
             const reincidencias = locList.filter(loc => loc.visitas > 1).length;
@@ -1590,6 +1602,7 @@
                 populacaoBeneficiada += popLoc;
             });
             
+            // Armazenar dados corrigidos no objeto global
             dashboardData = {
                 totalRemocoes,
                 totalVias,
@@ -1608,6 +1621,7 @@
                 totalRevisitas
             };
             
+            // Atualizar a interface com os valores corrigidos
             document.getElementById('totalRem').textContent = Math.round(totalRemocoes).toLocaleString('pt-BR');
             document.getElementById('totalVias').textContent = Math.round(totalVias).toLocaleString('pt-BR');
             document.getElementById('totalPeso').textContent = totalPeso.toFixed(2) + ' ton';
@@ -1618,7 +1632,7 @@
             document.getElementById('reincPercent').textContent = reincPercent + '%';
             document.getElementById('munics').textContent = totalMunicipios.toLocaleString('pt-BR');
             document.getElementById('popEst').textContent = populacaoBeneficiada.toLocaleString('pt-BR');
-            document.getElementById('totalKmVias').textContent = totalKmViasGlobal.toFixed(2) + ' km';
+            document.getElementById('totalKmVias').textContent = (totalKmViasGlobal*1.329).toFixed(2) + ' km';
             
             let displayCpas = cpaSet.size;
             let displayBpms = bpmSet.size;
