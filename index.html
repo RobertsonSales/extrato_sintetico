@@ -1415,8 +1415,10 @@
                     
                     // Converter metros para km
                     totalKmViasGlobal = totalMetros / 1000;
+                    // Aplicar taxa de correção
+                    totalKmViasGlobal *= TAXA_CORRECAO;
                     console.log('Total metros VIAS:', totalMetros.toFixed(0));
-                    console.log('Total km VIAS:', totalKmViasGlobal.toFixed(2));
+                    console.log('Total km VIAS (corrigido):', totalKmViasGlobal.toFixed(2));
                 }
             }
             
@@ -1568,6 +1570,7 @@
             totalRemocoes = totalRemocoes * TAXA_CORRECAO;
             totalVias = totalVias * TAXA_CORRECAO;
             totalPeso = totalPeso * TAXA_CORRECAO;
+
             
             const totalVisitas = locList.reduce((sum, loc) => sum + loc.visitas, 0);
             const uniqueLocs = locList.length;
@@ -1632,7 +1635,7 @@
             document.getElementById('reincPercent').textContent = reincPercent + '%';
             document.getElementById('munics').textContent = totalMunicipios.toLocaleString('pt-BR');
             document.getElementById('popEst').textContent = populacaoBeneficiada.toLocaleString('pt-BR');
-            document.getElementById('totalKmVias').textContent = (totalKmViasGlobal*1.329).toFixed(2) + ' km';
+            document.getElementById('totalKmVias').textContent = totalKmViasGlobal.toFixed(2) + ' km';
             
             let displayCpas = cpaSet.size;
             let displayBpms = bpmSet.size;
